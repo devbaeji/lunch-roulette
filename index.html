@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>점심 룰렛 🍽️</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    h1 {
+      color: white;
+      margin-bottom: 30px;
+      font-size: 2rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .roulette-container {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      margin-bottom: 30px;
+    }
+
+    .roulette {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      position: relative;
+      transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+      box-shadow: 0 0 30px rgba(0,0,0,0.3);
+    }
+
+    .roulette-segment {
+      position: absolute;
+      width: 50%;
+      height: 50%;
+      left: 50%;
+      top: 0;
+      transform-origin: 0% 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      clip-path: polygon(0% 100%, 100% 0%, 0% 0%);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .roulette-segment span {
+      transform: rotate(22.5deg) translateY(20px);
+      font-weight: bold;
+      font-size: 14px;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+
+    .pointer {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-top: 30px solid #ff6b6b;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+      z-index: 10;
+    }
+
+    .center-circle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 5;
+    }
+
+    .spin-btn {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 15px 50px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    }
+
+    .spin-btn:hover {
+      background: #ee5a5a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+    }
+
+    .spin-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .result {
+      margin-top: 30px;
+      padding: 20px 40px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease;
+    }
+
+    .result.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .result h2 {
+      color: #333;
+      font-size: 1.5rem;
+    }
+
+    .result .menu {
+      color: #764ba2;
+      font-size: 2rem;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .menu-list {
+      margin-top: 20px;
+      color: white;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .menu-list span {
+      margin: 0 8px;
+    }
+
+    /* 색상 팔레트 */
+    .seg-0 { background: #FF6B6B; }
+    .seg-1 { background: #4ECDC4; }
+    .seg-2 { background: #45B7D1; }
+    .seg-3 { background: #96CEB4; }
+    .seg-4 { background: #FFEAA7; }
+    .seg-5 { background: #DDA0DD; }
+    .seg-6 { background: #98D8C8; }
+    .seg-7 { background: #F7DC6F; }
+  </style>
+</head>
+<body>
+  <h1>🍽️ 점심 뭐 먹지?</h1>
+
+  <div class="roulette-container">
+    <div class="pointer"></div>
+    <div class="roulette" id="roulette"></div>
+    <div class="center-circle">🍴</div>
+  </div>
+
+  <button class="spin-btn" id="spinBtn" onclick="spin()">돌리기!</button>
+
+  <div class="result" id="result">
+    <h2>오늘의 점심은</h2>
+    <div class="menu" id="resultMenu"></div>
+  </div>
+
+  <div class="menu-list" id="menuList"></div>
+
+  <script>
+    const ALL_MENUS = [
+      '짜장면', '김치찌개', '삼겹살', '초밥', '쌀국수',
+      '햄버거', '치킨', '파스타', '덮밥', '칼국수',
+      '비빔밥', '냉면', '떡볶이', '순대국', '감자탕',
+      '부대찌개', '제육볶음', '돈까스', '라멘', '쌀밥'
+    ];
+
+    let menus = [];
+    let isSpinning = false;
+    let currentRotation = 0;
+
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function initRoulette() {
+      menus = shuffle(ALL_MENUS).slice(0, 8);
+      const roulette = document.getElementById('roulette');
+      const menuList = document.getElementById('menuList');
+
+      roulette.innerHTML = '';
+
+      menus.forEach((menu, i) => {
+        const segment = document.createElement('div');
+        segment.className = `roulette-segment seg-${i}`;
+        segment.style.transform = `rotate(${i * 45 - 67.5}deg)`;
+        segment.innerHTML = `<span>${menu}</span>`;
+        roulette.appendChild(segment);
+      });
+
+      menuList.innerHTML = '오늘의 후보: ' + menus.map(m => `<span>${m}</span>`).join('');
+    }
+
+    function spin() {
+      if (isSpinning) return;
+
+      isSpinning = true;
+      const btn = document.getElementById('spinBtn');
+      const roulette = document.getElementById('roulette');
+      const result = document.getElementById('result');
+
+      btn.disabled = true;
+      result.classList.remove('show');
+
+      // 랜덤 회전 (5~8바퀴 + 랜덤 각도)
+      const extraSpins = 5 + Math.floor(Math.random() * 3);
+      const randomAngle = Math.floor(Math.random() * 360);
+      currentRotation += extraSpins * 360 + randomAngle;
+
+      roulette.style.transform = `rotate(${currentRotation}deg)`;
+
+      // 결과 계산 (포인터가 위에 있으므로)
+      setTimeout(() => {
+        const normalizedAngle = (360 - (currentRotation % 360) + 90) % 360;
+        const segmentIndex = Math.floor(normalizedAngle / 45) % 8;
+        const selectedMenu = menus[segmentIndex];
+
+        document.getElementById('resultMenu').textContent = selectedMenu;
+        result.classList.add('show');
+
+        btn.disabled = false;
+        btn.textContent = '다시 돌리기!';
+        isSpinning = false;
+      }, 4000);
+    }
+
+    // 초기화
+    initRoulette();
+  </script>
+</body>
+</html>
